@@ -12,6 +12,8 @@
 </head>
 <body>
 <h1>Bienvenue sur ma vue JSP</h1>
+<p>Ceci est une nouvelle modification.</p>
+
 </body>
 </html>
 
