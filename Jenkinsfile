@@ -1,13 +1,9 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven_3.9.4'  // Nom de l'outil Maven dans Jenkins (à ajuster selon ta config)
-    }
-
     environment {
-        IMAGE_NAME = 'projet-saadnadi'
-        DOCKERHUB_USERNAME = 'votre_nom_dockerhub' // à personnaliser
+        IMAGE_NAME = 'saadnadi/projet-saadnadi'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // à configurer dans Jenkins
     }
 
     stages {
@@ -23,22 +19,32 @@ pipeline {
             }
         }
 
-        stage('Build Docker') {
+        stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                script {
+                    docker.build("${IMAGE_NAME}")
+                }
             }
         }
 
-        stage('Push DockerHub') {
+        stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker tag $IMAGE_NAME $DOCKER_USER/$IMAGE_NAME
-                        docker push $DOCKER_USER/$IMAGE_NAME
-                    '''
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDENTIALS_ID}") {
+                        docker.image("${IMAGE_NAME}").push('latest')
+                    }
                 }
             }
         }
     }
+
+    post {
+        success {
+            echo 'Pipeline exécuté avec succès!'
+        }
+        failure {
+            echo 'Le pipeline a échoué.'
+        }
+    }
 }
+
