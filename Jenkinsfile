@@ -1,56 +1,44 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven_3.9.4'  // Nom de l'outil Maven dans Jenkins (à ajuster selon ta config)
+    }
+
     environment {
-        IMAGE_NAME = 'jakartaee-students'
-        IMAGE_TAG = 'latest'
-        CONTAINER_NAME = 'jakartaee-container'
-        PORTS = '8085:8080'
+        IMAGE_NAME = 'projet-saadnadi'
+        DOCKERHUB_USERNAME = 'votre_nom_dockerhub' // à personnaliser
     }
 
     stages {
-        stage('📦 Cloner le dépôt') {
+        stage('Cloner le dépôt') {
             steps {
-                git url: 'https://github.com/Saad-eagle/projet_saadnadi.git'
+                git 'https://github.com/Saad-eagle/projet_saadnadi.git'
             }
         }
 
-        stage('🔨 Compiler avec Maven') {
+        stage('Build Maven') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('🐳 Construire l\'image Docker') {
+        stage('Build Docker') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-        stage('🧹 Supprimer ancien conteneur') {
+        stage('Push DockerHub') {
             steps {
-                sh '''
-                docker stop $CONTAINER_NAME || true
-                docker rm $CONTAINER_NAME || true
-                '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker tag $IMAGE_NAME $DOCKER_USER/$IMAGE_NAME
+                        docker push $DOCKER_USER/$IMAGE_NAME
+                    '''
+                }
             }
-        }
-
-        stage('🚀 Lancer nouveau conteneur') {
-            steps {
-                sh '''
-                docker run -d --name $CONTAINER_NAME -p $PORTS $IMAGE_NAME:$IMAGE_TAG
-                '''
-            }
-        }
-    }
-
-    post {
-        failure {
-            echo '❌ Le pipeline a échoué.'
-        }
-        success {
-            echo '✅ Le pipeline a terminé avec succès !'
         }
     }
 }
